@@ -1,0 +1,242 @@
+#MATLAB code for sensitivity analysis. Code was adapted from (Hosack, Li & Rossignol 2009) and run in MuPAD, 
+#MATLAB symbolic engine (version 8.3.0.532, release 2014a, The MathWorks, Inc., Natick, Massachusetts, United States).
+
+use(linalg)
+
+pcoeffs := proc(A,M,N)local j, k, l, Msil, Mabl, Fd, Fp, CMd, CMp, Fw, S;
+
+begin 
+S := nrows(A);
+Fd := array(1..S);
+Fp := array(1..S);
+Fw := array(1..S);
+Msil :=  matrix([ [lambda,0,0],[0,lambda,0],[0,0,lambda] ])-A;
+Mabl :=  matrix([ [lambda,0,0],[0,lambda,0],[0,0,lambda] ])+abs(A);
+
+for j from 1 to S do
+if j = N then
+Msil[M,j] := A[M,j];
+Mabl[M,j] := abs(A[M,j]);
+else
+Msil[M,j] := 0;
+Mabl[M,j] := 0;
+end_if;
+end_for;
+
+CMd := det(Msil);
+if coeff(CMd,lambda,S) > 0 then
+CMd := CMd*(-1);
+end_if;
+
+CMp := permanent(Mabl);
+
+for k from 1 to S do
+Fd[k] := coeff(CMd,lambda,S-k);
+Fp[k] := coeff(CMp,lambda,S-k);
+end_for;
+
+for l from 1 to S do
+if Fp[l] > 0 then
+if Fd[l] = Fp[l] then
+Fw[l] := 1;
+elif (-1)*Fd[l] = Fp[l] then
+Fw[l] := -1;
+else
+Fw[l] := (Fd[l]/Fp[l]);
+end_if;
+else
+Fw[l] := {};
+end_if;
+end_for;
+array([Fd,Fp,Fw]);end_proc:
+
+
+hdets := proc(Cd,Cp,A)
+local Harrd, Harrp, Hd, Hp, i, j, k, Hnpd, Hnpp, o, p, CPd,
+CPp, S,
+l, m, n, arrd, arrp, oldd, oldp, Matd, Matp, q, arrw;
+begin 
+S := nrows(A);
+Hd := array(1..S,1..S);
+Hp := array(1..S,1..S);
+Hnpd := array(1..S,1..S);
+Hnpp := array(1..S,1..S);
+arrd := array(1..S);
+arrp := array(1..S);
+arrw := array(1..S);
+CPd := det(matrix([ [lambda,0,0],[0,lambda,0],[0,0,lambda] ])-A);
+if coeff(CPd,lambda,S) < 0 then
+CPd := CPd*(-1);
+end_if;
+CPp := permanent(matrix([ [lambda,0,0],[0,lambda,0],[0,0,lambda] ])+abs(A));
+for i from 1 to S do
+for j from 1 to S do
+if 2*j-i > S then
+Hd[i,j] := 0;
+Hp[i,j] := 0;
+Hnpd[i,j] := 0;
+Hnpp[i,j] := 0;
+else
+if 2*j-i > 0 then
+Hd[i,j] := Cd[2*j-i]*(-1);
+Hp[i,j] := Cp[2*j-i];
+Hnpd[i,j] := coeff(CPd,lambda,S-(2*j-i));
+Hnpp[i,j] := coeff(CPp,lambda,S-(2*j-i));
+elif 2*j-i = 0 then
+Hd[i,j] := 0;
+Hp[i,j] := 0;
+Hnpd[i,j] := coeff(CPd,lambda,S-(2*j-i));
+Hnpp[i,j] := coeff(CPp,lambda,S-(2*j-i));
+else
+Hd[i,j] := 0;
+Hp[i,j] := 0;
+Hnpd[i,j] := 0;
+Hnpp[i,j] := 0;
+end_if;
+end_if;
+end_for;
+end_for;
+for k from 1 to S do
+arrd[k] := 0;
+arrp[k] := 0;
+oldd := 0;
+oldp := 0;
+Matd := matrix(k,k);
+Matp := matrix(k,k);
+for l from 1 to k do
+for m from 1 to k do
+for n from 1 to k do
+if m = l then
+Matd[m,n] := Hd[m,n];
+Matp[m,n] := Hp[m,n];
+else
+Matd[m,n] := Hnpd[m,n];
+Matp[m,n] := Hnpp[m,n];
+end_if;end_for;
+end_for;
+arrd[k] := det(Matd) + oldd;
+oldd := arrd[k];
+arrp[k] := permanent(Matp) + oldp;
+oldp := arrp[k];
+end_for;
+end_for;
+for q from 1 to S do
+if arrp[q] > 0 then
+if arrd[q] = arrp[q] then
+arrw[q] := 1;
+elif (-1)*arrd[q] = arrp[q] then
+arrw[q] := -1;
+else
+arrw[q] := (arrd[q]/arrp[q]);
+end_if;
+else
+arrw[q] := {};
+end_if;
+end_for;
+array([arrd, arrp, arrw]);
+end_proc:
+
+
+coeff_hrtz := proc(Q) 
+local i, j, Y, Z, pnet, ptot, pwts, hrtn, hrtt, hrtw, m,
+pwtt,hwtt; 
+begin 
+pnet := array(1..nrows(Q));
+ptot := array(1..nrows(Q));
+pwts := array(1..nrows(Q));
+hrtn := array(1..nrows(Q));
+hrtt := array(1..nrows(Q));
+hrtw := array(1..nrows(Q));
+for m from 1 to nrows(Q) do
+pnet[m] := array(1..nrows(Q),1..nrows(Q));
+ptot[m] := array(1..nrows(Q),1..nrows(Q));
+pwts[m] := array(1..nrows(Q),1..nrows(Q));
+hrtn[m] := array(1..nrows(Q),1..nrows(Q));
+hrtt[m] := array(1..nrows(Q),1..nrows(Q));
+hrtw[m] := array(1..nrows(Q),1..nrows(Q));
+for i from 1 to nrows(Q) do 
+for j from 1 to nrows(Q) do
+if Q[i,j] = 0 then
+pnet[m][i,j] := "NA";
+ptot[m][i,j] := "NA";
+pwts[m][i,j] := "NA";
+hrtn[m][i,j] := "NA";
+hrtt[m][i,j] := "NA";
+hrtw[m][i,j] := "NA";
+else
+Y := pcoeffs(Q,i,j);
+Z := hdets(Y[1],Y[2],Q);
+pnet[m][i,j] := Y[1][m];
+ptot[m][i,j] := Y[2][m];
+if Y[3][m] = 0 then
+pwts[m][i,j] := 0;
+else
+pwts[m][i,j] := Y[3][m];
+end_if;
+hrtn[m][i,j] := Z[1][m];
+hrtt[m][i,j] := Z[2][m];
+if Z[3][m] = 0 then
+hrtw[m][i,j] := 0;
+else
+hrtw[m][i,j] := Z[3][m];
+end_if;
+end_if;
+end_for;
+end_for;
+end_for;
+array([pnet,ptot,pwts,hrtn,hrtt,hrtw]);
+end_proc:
+
+
+res_coeff := proc(A, out)
+local t; 
+begin
+print("``");
+for t from 1 to nrows(A) do
+print("FEEDBACK LEVEL");
+print(t);
+print("``");
+print(N^F[t]);
+print(out[1][t]);
+print("``");
+print(T^F[t]);
+print(out[2][t]);
+print("``");
+print(W^F[t]);
+print(out[3][t]);
+print("``");
+end_for;
+end_proc:
+
+
+res_hurtz := proc(A, out)
+local t; 
+begin
+print("``");
+for t from 1 to nrows(A) do
+print("HURWITZ DETERMINANT");
+print(t);
+print("``");
+print(N^Delta[t]);
+print(out[4][t]);
+print("``");
+print(T^Delta[t]);
+print(out[5][t]);
+print("``");
+print(W^Delta[t]);
+print(out[6][t]);
+print("``");
+end_for;
+end_proc:
+
+
+sA:=matrix([ [-1,1,1],[1,-1,0],[-1,-1,1] ]):
+
+sA
+
+PH:=coeff_hrtz(sA);
+
+res_coeff(sA,PH);
+
+res_hurtz(sA,PH);
+
