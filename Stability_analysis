@@ -1,0 +1,41 @@
+library(LoopAnalyst)
+library(pracma)
+library(RConics)
+
+CM<-make.cm(3) 		#creates the system matrix with 3 variables
+
+
+Fn<-function(n,CM) {(-1)*charpoly(CM)[[n+1]]}	
+##function that calculates feedback levels from the coefficients of the characteristic polynomial of the matrix
+
+RH2<-(F1*F2) + F3		#calculates second Hurwitz determinant
+
+#Simulations with quantitative matrices 
+set.seed(1)
+A<-array(NA,c(3,3,10000))
+Fb<-matrix(NA,nrow=10000,ncol=ncol(CM))
+S1<-rep(NA,10000)
+S2<-rep(NA,10000)
+S<-rep(NA,10000)
+
+for (s in 1:10000) {
+     A[,,s]<-matrix(runif(9,0,1),nrow=3,ncol=3)
+     for (i in 1:nrow(A[,,s])) {
+          for (j in 1:ncol(A[,,s])) {
+               if (CM[i,j]!=0) {A[i,j,s]<-(CM[i,j]*A[i,j,s])}
+               else {A[i,j,s]<-0}
+               }}
+         Fb[s,1]<-Fn(1,A[,,s])
+         Fb[s,2]<-Fn(2,A[,,s])
+         Fb[s,3]<-Fn(3,A[,,s])
+         if (Fb[s,1]<0 & Fb[s,2]<0 & Fb[s,3]<0)
+         {S1[s]<-"pass"}
+         else {S1[s]<-"fail"}
+         if (S1[s]=="pass") {S2[s]<-((Fb[s,1])*(Fb[s,2])+(Fb[s,3]))}
+         else {S2[s]<-0}
+         if (S2[s]>0) {S[s]<-"stable"}
+         else {S[s]<-"unstable"}}
+
+prop.table(table(S=="stable"))				
+#calculates proportion of stable systems (potential for stability)
+
