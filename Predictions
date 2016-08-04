@@ -1,0 +1,12 @@
+########Predictions#########
+
+CR.adj<-make.adjoint(CM)				#table of predictions
+CR.wp<-weighted.predictions(CM)			#weighted predictions
+
+
+#predictions for simulated quantitative systems
+Adjs<-array(NA,c(3,3,10000))
+
+for (s in 1:10000) {
+     Adjs[,,s]<-adjoint(-A[,,s])}
+
